@@ -1,13 +1,11 @@
 {
     "LogDirectory": ".\\Log",
-    "PackageDirectory": "\\Package",
-    "RemoteUserLogin": "",
-    "RemoteUserPassword": "",
-    "InstallPackageBuildServerIp": "",
-    "InstallPackageBuildServerPackageDirectory": "C:\\Temp\\Package\\",
-    "InstallPackageBuildServerPackageTempDirectory": "C:\\Temp\\TempPackage\\",
-    "InstallPackageServerConfPath": "C:\\Creatio\\Site\\Terrasoft.WebApp",
-    "InstallPackageServerWCLogPath": "C:\\Terrasoft\\WC\\Log",
-    "InstallPackageServerWCPath": "C:\\Creatio\\Site\\Terrasoft.WebApp\\DesktopBin\\WorkspaceConsole\\Terrasoft.Tools.WorkspaceConsole.exe",
-    "InstallPackageServerIps": ""
+    "PackageDirectory": ".\\Package",
+    "ConfigurationBinDirectory": ".\\ConfigurationBin",
+    "WebAppRuntimeDataDirectory": ".\\RuntimeData",
+    "WebAppBinDirectory": ".\\WebAppBin",
+    "InstallPackageBuildServerPackageDirectory": "C:\\Terrasoft\\Update\\Package",
+    "InstallPackageBuildServerPackageTempDirectory": "C:\\Terrasoft\\Update\\TempPackage",
+    "InstallPackageServerLoaderDirectory": "C:\\Creatio\\Site",
+    "InstallPackageServerWCLogDirectory": "C:\\Terrasoft\\Update\\Log",
 }

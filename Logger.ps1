@@ -12,7 +12,7 @@ function GetMessageText {
     [OutputType([string])]
     param ([string]$Message)
     $dateStr = Get-Date -Format "dd-MM-yyyy HH:mm:ss";
-    return $dateStr + " " + $Message;
+    return $dateStr + " " + ($Message | Out-String);
 }
 function Log {
     param ([string]$Message)
