@@ -19,7 +19,6 @@ function WSInstallPackage {
     Log -Message "WC start install package";
     $output = Invoke-Command -Session $Session -ScriptBlock {
         Param ($wcPath, $loaderPath, $webAppPath, $packageDirectory, $packageTempDirectory, $logPath)
-        Write-Host $wcPath -operation=InstallFromRepository -workspaceName=Default  -updateSystemDBStructure=true -installPackageSqlScript=true -installPackageData=true "-sourcePath=$packageDirectory" "-destinationPath=$packageTempDirectory" "-webApplicationPath=$loaderPath" "-confRuntimeParentDirectory=$webAppPath" -clearWorkspace=false -continueIfError=true "-logPath=$logPath" -autoExit=true;
         Get-ChildItem -Path $packageTempDirectory -Directory -Recurse | Remove-Item -Recurse -Force -Confirm:$false;
         & $wcPath -operation=InstallFromRepository -workspaceName=Default  -updateSystemDBStructure=true -installPackageSqlScript=true -installPackageData=true "-sourcePath=$packageDirectory" "-destinationPath=$packageTempDirectory" "-webApplicationPath=$loaderPath" "-confRuntimeParentDirectory=$webAppPath" -clearWorkspace=false -continueIfError=true "-logPath=$logPath" -autoExit=true;
     } -ArgumentList $WCPath, $LoaderDirectory, $WebAppDirectory, $InstallPackageBuildServerPackageDirectory, $InstallPackageBuildServerPackageTempDirectory, $InstallPackageServerWCLogDirectory;
