@@ -5,23 +5,31 @@
 [string]$LoaderDirectory = GetConfigValue -Key "InstallPackageServerLoaderDirectory";
 [string]$WebAppDirectory = Join-Path -Path $LoaderDirectory -ChildPath "Terrasoft.WebApp";
 [string]$ConfigurationBinDirectory = Join-Path -Path $ConfigurationDirectory -ChildPath "bin";
-[string]$WebAppRuntimeDataDirectory = Join-Path -Path $WebAppDirectory -ChildPath "conf\runtime-data";
-[string]$WebAppConfigurationBuildDirectory = Join-Path -Path $WebAppDirectory -ChildPath "conf\bin";
+[string]$WebAppConfigurationDirectory = Join-Path -Path $WebAppDirectory -ChildPath "conf";
+[string]$WebAppRuntimeDataDirectory = Join-Path -Path $WebAppConfigurationDirectory -ChildPath "runtime-data";
+[string]$WebAppConfigurationBuildDirectory = Join-Path -Path $WebAppConfigurationDirectory -ChildPath "bin";
 [string]$RemoteUserLogin = GetConfigValue -Key "RemoteUserLogin";
 [string]$RemoteUserPassword = GetConfigValue -Key "RemoteUserPassword";
 [string]$LocalWebAppBinDirectory = GetConfigValue -Key "WebAppBinDirectory";
 [string]$LocalWebAppRuntimeDataDirectory = GetConfigValue -Key "WebAppRuntimeDataDirectory";
 [string]$LocalConfigurationBinDirectory = GetConfigValue -Key "ConfigurationBinDirectory";
-[string]$WebAppRuntimeDataDirectory = GetConfigValue -Key "WebAppRuntimeDataDirectory";
 [string[]]$Servers = (GetConfigValue -Key "InstallPackageServerIps").Split(",");
 
 function SendConfigurationBuild {
-    param ([object]$Sessions)
+    param ([object]$Session)
     Log -Message "Send configuration build to other sites";
-    Get-ChildItem -Path $LocalWebAppBinDirectory -Directory -Recurse | Remove-Item -Recurse -Force -Confirm:$false;
-    SendRemoteFile -Session $Sessions -Source ($LocalWebAppBinDirectory + "\*") -Destination ($WebAppConfigurationBuildDirectory + "\");
-    SendRemoteFile -Session $Sessions -Source ($LocalConfigurationBinDirectory + "\*") -Destination ($ConfigurationBinDirectory + "\");
-    SendRemoteFile -Session $Sessions -Source ($LocalWebAppRuntimeDataDirectory + "\*") -Destination ($WebAppRuntimeDataDirectory + "\");
+    SendRemoteFile -Session $Session -Source ($LocalWebAppBinDirectory + "\bin\*") -Destination ($WebAppConfigurationBuildDirectory + "\");
+    SendRemoteFile -Session $Session -Source ($LocalWebAppBinDirectory + "\_MetaInfo.json") -Destination ($WebAppConfigurationDirectory + "\");
+    SendRemoteFile -Session $Session -Source ($LocalConfigurationBinDirectory + "\*") -Destination ($ConfigurationBinDirectory + "\");
+    SendRemoteFile -Session $Session -Source ($LocalWebAppRuntimeDataDirectory + "\*") -Destination ($WebAppRuntimeDataDirectory + "\");
+}
+function RemoveConfigurationBuild {
+    param ([object] $Session)
+    Log -Message "Removed old configuration builds";
+    Invoke-Command -Session $Session -ScriptBlock {
+        Param ($webAppBinDirectory)
+        Get-ChildItem -Path $webAppBinDirectory -Directory -Recurse | Remove-Item -Recurse -Force -Confirm:$false;
+    } -ArgumentList $WebAppConfigurationBuildDirectory;
 }
 function InstallUpdateToOtherSites {
     param ()
@@ -29,10 +37,11 @@ function InstallUpdateToOtherSites {
     $sessions = CreateSession -ServersIp $Servers -Login $RemoteUserLogin -Pass $RemoteUserPassword;
     foreach($serverSession in $sessions) {
         Log -Message "Stop web server";
-        StopServer -Sessions $serverSession;
-        SendConfigurationBuild -Sessions $serverSession;
+        StopServer -Session $serverSession;
+        RemoveConfigurationBuild -Session $serverSession;
+        SendConfigurationBuild -Session $serverSession;
         Log -Message "Start web server";
-        StartServer -Sessions $serverSession;
+        StartServer -Session $serverSession;
     }
     WCBuildConfiguration -Session $sessions;
     Log -Message "End install update to other sites";

@@ -7,14 +7,14 @@ function DownloadRemoteFile {
     Copy-Item $Source -Destination $Destination -FromSession $Session -recurse -force;
 }
 function StopServer {
-    param ([object]$Sessions)
-    Invoke-Command -Session $Sessions -ScriptBlock {
+    param ([object]$Session)
+    Invoke-Command -Session $Session -ScriptBlock {
         iisreset /stop
     }
 }
 function StartServer {
-    param ([object]$Sessions)
-    Invoke-Command -Session $Sessions -ScriptBlock {
+    param ([object]$Session)
+    Invoke-Command -Session $Session -ScriptBlock {
         iisreset /start
     }
 }

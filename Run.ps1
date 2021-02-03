@@ -7,7 +7,7 @@ $PackageDirectory = GetConfigValue -Key "PackageDirectory";
 function GetPackagePath {
     [OutputType([bool])]
     param()
-    $firstFile = Get-ChildItem -Path $PackageDirectory -Force -Recurse -File -Filter "*.gz" | Select-Object -First 1;
+    $firstFile = Get-ChildItem -Path $PackageDirectory -Force -Recurse -File -Filter "*.zip" | Select-Object -First 1;
     if ($null -eq $firstFile) {
         return $null;
     }
@@ -21,7 +21,7 @@ function Main {
         Log -Message "Package not found in $PackageDirectory";
         return;
     }
-    InstallPackage -PackagePath $packagePath;
+    InstallPackage;
     InstallUpdateToOtherSites;
     Log -Message "End";
 }

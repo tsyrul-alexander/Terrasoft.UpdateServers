@@ -11,41 +11,44 @@
 [string]$WebAppDirectory = Join-Path -Path $LoaderDirectory -ChildPath "Terrasoft.WebApp";
 [string]$ConfigurationDirectory = Join-Path -Path $WebAppDirectory -ChildPath "Terrasoft.Configuration";
 [string]$ConfigurationBinDirectory = Join-Path -Path $ConfigurationDirectory -ChildPath "bin";
-[string]$WebAppRuntimeDataDirectory = Join-Path -Path $WebAppDirectory -ChildPath "conf\runtime-data";
-[string]$WebAppConfigurationBuildDirectory = Join-Path -Path $WebAppDirectory -ChildPath "conf\bin";
+[string]$WebAppConfigurationDirectory = Join-Path -Path $WebAppDirectory -ChildPath "conf";
+[string]$WebAppRuntimeDataDirectory = Join-Path -Path $WebAppConfigurationDirectory -ChildPath "runtime-data";
+[string]$WebAppConfigurationBuildDirectory = Join-Path -Path $WebAppConfigurationDirectory -ChildPath "bin";
 [string]$LocalConfigurationBinDirectory = GetConfigValue -Key "ConfigurationBinDirectory";
 [string]$LocalWebAppRuntimeDataDirectory = GetConfigValue -Key "WebAppRuntimeDataDirectory";
 [string]$LocalWebAppBinDirectory = GetConfigValue -Key "WebAppBinDirectory";
 function SendPackage {
-    param ([object] $Session, [string]$PackagePath)
-    $distination = $InstallPackageBuildServerPackageDirectory + "\";
-    Log -Message "Send package from $PackagePath to $distination";
-    SendRemoteFile -Session $sessions -Source $PackagePath -Destination $distination;
+    param ([object] $Session)
+    Log -Message "Send package to install server";
+    Invoke-Command -Session $Session -ScriptBlock {
+        Param ($packageDirectory)
+        Get-ChildItem -Path $packageDirectory -Recurse | Remove-Item -Recurse -Force -Confirm:$false;
+    } -ArgumentList $InstallPackageBuildServerPackageDirectory;
+    SendRemoteFile -Session $sessions -Source ($PackageDirectory + "\*") -Destination ($InstallPackageBuildServerPackageDirectory + "\");
+    Invoke-Command -Session $Session -ScriptBlock {
+        Param ($packageDirectory)
+        $zipFile = Get-ChildItem -Path $packageDirectory -Force -Recurse -File -Filter "*.zip";
+        $zipFile | Expand-Archive -Force -DestinationPath $packageDirectory;
+        $zipFile | Remove-Item -Recurse -Force -Confirm:$false;
+    } -ArgumentList $InstallPackageBuildServerPackageDirectory;
 }
 function RemoveConfigurationBuildWithoutLast {
     param ([object] $Session)
     Log -Message "Removed old configuration builds";
-    $commandOutput = Invoke-Command -Session $Session -ScriptBlock {
+    Invoke-Command -Session $Session -ScriptBlock {
         Param ($webAppBuildDirectory)
         $removeFolders = Get-ChildItem -Path $webAppBuildDirectory -Directory -Recurse | Sort-Object CreationTime -desc | Select-Object -Skip 1;
         Write-Host $removeFolders;
         $removeFolders | Remove-Item -Recurse -Force -Confirm:$false;
     } -ArgumentList $WebAppConfigurationBuildDirectory;
-    Log -Message $commandOutput;
 }
 function DownloadConfigurationBuild {
     param ([object] $Session)
     Log -Message "Download configuration buil to local";
     DownloadRemoteFile -Session $sessions -Source ($ConfigurationBinDirectory + "\Terrasoft.Configuration*") -Destination ($LocalConfigurationBinDirectory + "\");
-    DownloadRemoteFile -Session $sessions -Source ($WebAppConfigurationBuildDirectory + "\*") -Destination ($LocalWebAppBinDirectory + "\");
+    DownloadRemoteFile -Session $sessions -Source ($WebAppConfigurationDirectory + "\_MetaInfo.json") -Destination ($LocalWebAppBinDirectory + "\");
+    DownloadRemoteFile -Session $sessions -Source ($WebAppConfigurationBuildDirectory + "\*") -Destination ($LocalWebAppBinDirectory + "\bin\");
     DownloadRemoteFile -Session $sessions -Source ($WebAppRuntimeDataDirectory + "\*") -Destination ($LocalWebAppRuntimeDataDirectory + "\");
-}
-function DownloadRuntimeData {
-    param ([object] $Session)
-    $source = $WebAppRuntimeDataDirectory + "\*";
-    $distination = $LocalWebAppRuntimeDataDirectory + "\";
-    Log -Message "Download runtime data from $source to $distination";
-    DownloadRemoteFile -Session $sessions -Source $source -Destination $distination;
 }
 function ClearLocalBuildData {
     param ()
@@ -55,22 +58,21 @@ function ClearLocalBuildData {
     Get-ChildItem -Path $LocalWebAppRuntimeDataDirectory -Directory -Recurse | Remove-Item -Recurse -Force -Confirm:$false;
 }
 function InstallPackage {
-    param ([string]$PackagePath)
+    param ()
     Log -Message "Start install package";
     ClearLocalBuildData;
     $sessions = CreateSession -ServersIp $InstallPackageBuildServerIp -Login $RemoteUserLogin -Pass $RemoteUserPassword;
-    SendPackage -Session $sessions -PackagePath $PackagePath;
-    StopServer -Sessions $sessions;
-    #if (WSInstallPackage -Session $sessions -PackageDirectory $PackageDirectory -eq -1) {
-    #    Log -Message "Installed WC package with error";
-    #    StartServer -Sessions $sessions;
-    #    $sessions | Remove-PSSession;
-    #    exit -1;
-    #}
+    SendPackage -Session $sessions;
+    StopServer -Session $sessions;
+    if (WSInstallPackage -Session $sessions -PackageDirectory $PackageDirectory -eq -1) {
+        Log -Message "Installed WC package with error";
+        StartServer -Session $sessions;
+        $sessions | Remove-PSSession;
+        exit -1;
+    }
     RemoveConfigurationBuildWithoutLast -Session $sessions;
     DownloadConfigurationBuild -Session $sessions;
-    DownloadRuntimeData -Session $sessions;
-    StartServer -Sessions $sessions;
+    StartServer -Session $sessions;
     $sessions | Remove-PSSession;
     Log -Message "End install package";
 }
